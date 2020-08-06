@@ -15,15 +15,6 @@ namespace Hz.IdentityServer.Controllers
 
         public IActionResult Authorize([FromHeader]AuthorizeOptions options)
         {
-            if("code".Equals(options.response_type))
-            {
-                
-            }
-            else if("token".Equals(options.response_type))
-            {
-
-            }
-
             ViewData["options"] = options;
             return View();
         }
