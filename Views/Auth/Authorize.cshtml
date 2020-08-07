@@ -28,4 +28,64 @@
         </div>
       </div>
     </div>
+    <!--确认授权-->
+    <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">授权确认</h5>
+            <button type="button" class="close" data-dismiss="modal"  aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            是否授权 @ViewData["orgName"] 获取 @options.scope 信息
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary" id="authorizeBtn">同意授权</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <input type="text" hidden value="@options.redirect_uri" id="redirectUrl">
 </div>
+
+@section Scripts {
+  <script>
+    $(function() {
+      var code = '';
+      $("#submit").click(function() {
+        var data = {
+          account: $("#account").val(),
+          passwd: $("#passwd").val(),
+          response_type: '@options.response_type'
+        };
+        $.ajax({
+          type: "POST",
+          url: "submit",
+          contentType: "application/json",
+          data: JSON.stringify(data),
+          success: function(data) {
+            $("#confirmModal").modal('show');
+            code = data;
+          },
+          error: function(e) {}
+        })
+      });
+
+      $("#authorizeBtn").click(function() {
+        let url = $("#redirectUrl").val();
+        if('code'==='@options.response_type')
+        {
+          url += '?code=' + code;
+        }
+        else if ('token' === '@options.response_type')
+        {
+          url += '#token=' + code;
+        }
+        location.href = url;
+      });
+    })
+  </script>
+}
