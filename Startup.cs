@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Hz.IdentityServer.Common;
 
 namespace Hz.IdentityServer
 {
@@ -23,6 +24,11 @@ namespace Hz.IdentityServer
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+
+            // 添加缓存(内存缓存，在开发测试时使用，线上替换为redis等)
+            services.AddDistributedMemoryCache();
+
+            services.AddScoped<IClientService, ClientService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
