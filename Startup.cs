@@ -26,7 +26,11 @@ namespace Hz.IdentityServer
             services.AddControllersWithViews();
 
             // 添加缓存(内存缓存，在开发测试时使用，线上替换为redis等)
-            services.AddDistributedMemoryCache();
+            // services.AddDistributedMemoryCache();
+            services.AddStackExchangeRedisCache(options => {
+                options.Configuration = "172.29.40.121";
+                options.InstanceName = "test:"; // key会带上这个前缀
+            });
 
             services.AddScoped<IClientService, ClientService>();
         }
