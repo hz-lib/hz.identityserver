@@ -49,7 +49,6 @@
         </div>
       </div>
     </div>
-    <input type="text" hidden value="@options.redirect_uri" id="redirectUrl">
 </div>
 
 @section Scripts {
@@ -71,21 +70,26 @@
             $("#confirmModal").modal('show');
             code = data;
           },
-          error: function(e) {}
+          error: function(e) {
+            console.log(e);
+          }
         })
       });
 
       $("#authorizeBtn").click(function() {
-        let url = $("#redirectUrl").val();
+        let url = '@options.redirect_uri';
         if('code'==='@options.response_type')
         {
-          url += '?code=' + code;
+          url += '?code=' + code + '&state=' + '@options.state';
         }
         else if ('token' === '@options.response_type')
         {
-          url += '#token=' + code;
+          url += '#access_token=' + code + '&token_type=Bearer' + '&state=' + '@options.state';
         }
         location.href = url;
+        // 跳转之后客户端前端将数据传递给后端
+
+        // 错误导航：https://client.example.com/cb#error=access_denied&state=xyz
       });
     })
   </script>

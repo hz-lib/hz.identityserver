@@ -1,7 +1,8 @@
 using System;
 using Microsoft.Extensions.Caching.Distributed;
+using Hz.IdentityServer.Common;
 
-namespace Hz.IdentityServer.Common
+namespace Hz.IdentityServer.Application.Services
 {
     public class ClientService : IClientService
     {
@@ -93,6 +94,34 @@ namespace Hz.IdentityServer.Common
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// 根据code获取用户id
+        /// </summary>
+        /// <param name="code"></param>
+        /// <returns></returns>
+        public string GetUserIdByCode(string code)
+        {
+            var key = CacheKeyProvider.CodeKey(code);
+            var userid = _cache.GetString(key);
+            _cache.Remove(key);
+            return userid;
+        }
+
+        /// <summary>
+        /// 根据refresh_token获取用户id
+        /// </summary>
+        /// <param name="refresh_token"></param>
+        /// <returns></returns>
+        public string GetUserIdByRefreshToken(string refresh_token)
+        {
+            var key = CacheKeyProvider.RefreshTokenKey(refresh_token);
+            var strToken = _cache.GetString(key);
+            var token = System.Text.Json.JsonSerializer.Deserialize<Models.TokenResult>(strToken);
+            _cache.Remove(key);
+            _cache.Remove(CacheKeyProvider.TokenKey(token.access_token));
+            return token.userid;
         }
     }
 }

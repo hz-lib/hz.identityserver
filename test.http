@@ -1,0 +1,158 @@
+### -----------------code-----------------------------
+
+### get code
+## 使用http://localhost:5000/auth/authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz 跳转到登录页
+## 登陆后获取code
+
+### error grant_type
+POST http://localhost:5000/auth/codetoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "authorization_code1",
+  "code": "519bb3ffd7734feb9daa69454846ed4e",
+  "redirect_uri": "https://www.baidu.com"
+}
+
+### error code
+POST http://localhost:5000/auth/codetoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "authorization_code",
+  "code": "519bb3ffd7734feb9daa69454846ed4s",
+  "redirect_uri": "https://www.baidu.com"
+}
+
+### error uri
+
+POST http://localhost:5000/auth/codetoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "authorization_code",
+  "code": "519bb3ffd7734feb9daa69454846ed4e",
+  "redirect_uri": "https://www.baidu.cn"
+}
+
+### normal
+
+POST http://localhost:5000/auth/codetoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "authorization_code",
+  "code": "519bb3ffd7734feb9daa69454846ed4e",
+  "redirect_uri": "https://www.baidu.com"
+}
+
+### ------------------------------------------------------------
+
+
+### -----------------------Implicit-----------------------------
+## 针对纯前端项目（javascript）
+## 使用http://localhost:5000/auth/authorize?response_type=token&client_id=s6BhdRkqt3&state=xyz
+## 登陆后获取token
+## 前端获取token之后可以传给后端或者自行保存
+## 令牌的位置是 URL 锚点（fragment），而不是查询字符串（querystring），
+## 这是因为 OAuth 2.0 允许跳转网址是 HTTP 协议，因此存在"中间人攻击"的风险，而浏览器跳转时，锚点不会发到服务器，就减少了泄漏令牌的风险。
+### ------------------------------------------------------------
+
+
+### -----------------------password-----------------------------
+
+### error grant_type
+POST http://localhost:5000/auth/passwordtoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "password1",
+  "username": "admin",
+  "password": "123456",
+  "scope": "admin"
+}
+
+### error user
+POST http://localhost:5000/auth/passwordtoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "password",
+  "username": "admin",
+  "password": "1234567",
+  "scope": "admin"
+}
+### normal
+POST http://localhost:5000/auth/passwordtoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "password",
+  "username": "admin",
+  "password": "123456",
+  "scope": "admin"
+}
+### ------------------------------------------------------------
+
+
+### -----------------------client-------------------------------
+
+### error grant_type
+POST http://localhost:5000/auth/clienttoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "client_credentials1",
+  "client_id": "AdminOrg",
+  "client_secret": "123456"
+}
+### error client
+POST http://localhost:5000/auth/clienttoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "client_credentials",
+  "client_id": "AdminOrg",
+  "client_secret": "1234567"
+}
+
+### normal
+POST http://localhost:5000/auth/clienttoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "client_credentials",
+  "client_id": "AdminOrg",
+  "client_secret": "123456"
+}
+### ------------------------------------------------------------
+
+
+### -----------------------refresh------------------------------
+### error grant_type
+POST http://localhost:5000/auth/refreshtoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "refresh_token1",
+  "refresh_token": "2edd897c31dc4e4aa19bc4064940e8f7"
+}
+
+### error refresh_token
+POST http://localhost:5000/auth/refreshtoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "refresh_token",
+  "refresh_token": "2edd897c31dc4e4aa19bc4064940e8f4"
+}
+
+### normal
+POST http://localhost:5000/auth/refreshtoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "grant_type": "refresh_token",
+  "refresh_token": "4d3f3061e8e049689a586d8dfcba0d08"
+}
+### ------------------------------------------------------------

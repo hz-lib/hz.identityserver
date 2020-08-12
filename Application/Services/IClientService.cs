@@ -1,12 +1,12 @@
-namespace Hz.IdentityServer.Common
+namespace Hz.IdentityServer.Application.Services
 {
     public interface IClientService
     {
-         bool ValidateClient(string client_id, string client_secret);
          bool ValidateClientId(string client_id);
          bool ValidateCode(string code);
          bool ValidateRefreshToken(string refreshToken);
-         bool ValidateGrantType(string grant_type);
          bool ValidateResponseType(string response_type);
+         string GetUserIdByCode(string code);
+         string GetUserIdByRefreshToken(string refresh_token);
     }
 }

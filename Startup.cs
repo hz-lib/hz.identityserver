@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Hz.IdentityServer.Common;
+using Hz.IdentityServer.Application.Services;
 
 namespace Hz.IdentityServer
 {
@@ -28,11 +28,12 @@ namespace Hz.IdentityServer
             // 添加缓存(内存缓存，在开发测试时使用，线上替换为redis等)
             // services.AddDistributedMemoryCache();
             services.AddStackExchangeRedisCache(options => {
-                options.Configuration = "172.29.40.121";
+                options.Configuration = "172.29.44.50";
                 options.InstanceName = "test:"; // key会带上这个前缀
             });
 
             services.AddScoped<IClientService, ClientService>();
+            services.AddSingleton<IAuthKeyFactory, GuidAuthKeyFactory>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

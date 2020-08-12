@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Distributed;
 using Hz.IdentityServer.Models;
 using Hz.IdentityServer.Common;
+using Hz.IdentityServer.Application.Services;
+using Hz.IdentityServer.Application.Entities;
 
 namespace Hz.IdentityServer.Controllers
 {
@@ -12,12 +14,18 @@ namespace Hz.IdentityServer.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IDistributedCache _cache;
         private readonly IClientService _clientService;
+        private readonly IAuthKeyFactory _keyFactory;
 
-        public AuthController(ILogger<AuthController> logger, IDistributedCache cache, IClientService clientService)
+        public AuthController(
+            ILogger<AuthController> logger, 
+            IDistributedCache cache, 
+            IClientService clientService,
+            IAuthKeyFactory keyFactory)
         {
             _logger = logger;
             _cache = cache;
             _clientService = clientService;
+            _keyFactory = keyFactory;
         }
 
         public IActionResult Authorize([FromHeader]AuthorizeOptions options)
@@ -27,8 +35,9 @@ namespace Hz.IdentityServer.Controllers
             {
                 return RedirectToAction("Error", "Home", new { msg = "not exists client or error response_type"} );
             }
-
-            ViewData["orgName"] = "xxx机构";
+            var client = Client.AdminClient();
+            ViewData["orgName"] = client.client_name;
+            options.redirect_uri = client.redirect_uri;
             ViewData["options"] = options;
             return View();
         }
@@ -36,17 +45,19 @@ namespace Hz.IdentityServer.Controllers
         [HttpPost]
         public IActionResult Submit([FromBody]LoginModel model)
         {
-            if(model.account == "admin" && model.passwd == "123456")
+            var adminUser = UserInfo.CreateAdminUser();
+            if(adminUser.CheckUser(model.account, model.passwd))
             {
-                var userid = Guid.NewGuid().ToString("N");
-                var code =  Guid.NewGuid().ToString("N");
+                var userid = adminUser.id;
+                var code =  _keyFactory.GenerateCode();
 
                 if (model.response_type.IsToken()) {
-                    _cache.SetString(CacheKeyProvider.TokenKey(code), userid, new DistributedCacheEntryOptions {
+                    // 隐式模式
+                    _cache.SetString(CacheKeyProvider.TokenKey(code), userid.ToString(), new DistributedCacheEntryOptions {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
                     });
                 } else {
-                    _cache.SetString(CacheKeyProvider.CodeKey(code), userid, new DistributedCacheEntryOptions {
+                    _cache.SetString(CacheKeyProvider.CodeKey(code), userid.ToString(), new DistributedCacheEntryOptions {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
                     });
                 }
@@ -54,59 +65,52 @@ namespace Hz.IdentityServer.Controllers
                 return Ok(code);
             }
             else {
-                return RedirectToAction("Error","Home");
+                return Problem("账号或密码错误！");
             }
         }
 
-        [HttpGet]
-        public IActionResult Token([FromHeader]TokenOptions options)
+        /// <summary>
+        /// 授权码模式
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public IActionResult CodeToken([FromBody]CodeTokenOptions options)
         {
-            if(!_clientService.ValidateClient(options.client_id, options.client_secret))
-            {
-                return Redirect(TokenResult.BuildUrl(TokenResult.Error("error client"),options.redirect_uri));
+            // validate grant_type
+            if(!options.ValidateGrantType()) {
+                return Json(new {
+                    error = "error grant_type"
+                });
             }
 
-            if(!_clientService.ValidateGrantType(options.grant_type))
-            {
-                return Redirect(TokenResult.BuildUrl(TokenResult.Error("error grant_type"),options.redirect_uri));
+            var client = Client.AdminClient();
+            // validate client
+            if(client is null) {
+                return Json(new {
+                    error = "invalid client"
+                });
             }
 
-
-            var userid = "";
-
-            if("authorization_code".Equals(options.grant_type))
-            {
-                if(!_clientService.ValidateCode(options.code))
-                {
-                    return Redirect(TokenResult.BuildUrl(TokenResult.Error("error code"),options.redirect_uri));
-                }
-                else
-                {
-                    userid = _cache.GetString(CacheKeyProvider.CodeKey(options.code));
-                    _cache.Remove(CacheKeyProvider.CodeKey(options.code));
-                }
-            } 
-            else if("refresh_token".Equals(options.grant_type))
-            {
-                if(!_clientService.ValidateRefreshToken(options.refresh_token))
-                {
-                    return Redirect(TokenResult.BuildUrl(TokenResult.Error("error refresh token"),options.redirect_uri));
-                }
-                else
-                {
-                    userid = _cache.GetString(CacheKeyProvider.RefreshTokenKey(options.refresh_token));
-                    _cache.Remove(CacheKeyProvider.RefreshTokenKey(options.refresh_token));
-                }
+            // validate redirect_uri
+            if (!client.ValidateRedirectUri(options.redirect_uri)) {
+                return Json(new {
+                    error = "error redirect_uri"
+                });
             }
-            else
-            {
-                // 客户端用户
-                userid = options.client_id;
+            // validate code
+            if (!_clientService.ValidateCode(options.code)) {
+                return Json(new {
+                    error = "invalid code"
+                });
             }
 
+            // return
+            var userid = _clientService.GetUserIdByCode(options.code);
+            
             var tokenResult = HandleToken(userid);
 
-            return Redirect(TokenResult.BuildUrl(tokenResult, options.redirect_uri));
+            return Json(tokenResult);
         }
 
         /// <summary>
@@ -114,41 +118,92 @@ namespace Hz.IdentityServer.Controllers
         /// </summary>
         /// <param name="options"></param>
         /// <returns></returns>
-        [HttpGet]
-        public IActionResult PasswordToken([FromHeader]PasswordTokenOptions options)
+        [HttpPost]
+        public IActionResult PasswordToken([FromBody]PasswordTokenOptions options)
         {
-            if(!_clientService.ValidateClientId(options.client_id))
-            {
-                return Problem("not exists clientid");
-            }
+            // client_id 可以没有
+            // if(!_clientService.ValidateClientId(options.client_id))
+            // {
+            //     return Json(new { error = "invalid clientid"});
+            // }
             
-            if(!GrantType.Password.Equals(options.grant_type))
+            if(!options.ValidateGrantType())
             {
-                return Problem("error grant type");
+                return Json(new { error = "error grant_type" });
             }
 
-            if("admin".Equals(options.username) && "123456".Equals(options.password))
+            var userAdmin = UserInfo.CreateAdminUser();
+            if(userAdmin.CheckUser(options.username, options.password))
             {
-                var userid = Guid.NewGuid().ToString("N");
-                return Json(HandleToken(userid));
+                return Json(HandleToken(userAdmin.id.ToString()));
             }
             else
             {
-                return Problem("error userinfo");
+                return Json(new { error = "error userinfo"});
             }
+        }
+
+        /// <summary>
+        /// 客户端模式
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public IActionResult ClientToken([FromBody]ClientOptions options)
+        {
+            // validate grant_type
+            if(!options.ValidateGrantType())
+            {
+                return Json(new { error = "error grant_type" });
+            }
+
+            // validate client
+            var client = Client.AdminClient();
+            if(client is null || !client.CheckClient(options.client_id, options.client_secret))
+            {
+                return Json(new { error = "invalid client"});
+            }
+
+            // return
+            // use client_id as userid
+            return Json(HandleToken(options.client_id));
+        }
+
+        /// <summary>
+        /// 刷新令牌
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public IActionResult RefreshToken([FromBody]RefreshTokenOptions options)
+        {
+            // validate grant_type
+            if(!options.ValidateGrantType()) {
+                return Json(new { error = "error grant_type"});
+            }
+
+            // validate refresh_token
+            if(!_clientService.ValidateRefreshToken(options.refresh_token)) {
+                return Json(new { error = "invalid refresh_token"});
+            }
+
+            // return
+            var userid = _clientService.GetUserIdByRefreshToken(options.refresh_token);
+            return Json(HandleToken(userid));
         }
 
         private TokenResult HandleToken(string userid)
         {
-            var token = Guid.NewGuid().ToString("N");
-            var refreshToken = Guid.NewGuid().ToString("N");
+            var token = _keyFactory.GenerateToken();
+            var refreshToken = _keyFactory.GenerateToken();
             var tokenExpiresIn = 60*60*24; // 1天
             var refreshTokenExpiresIn = 60*60*24*365; // 1年
 
             var tokenResult = new TokenResult {
                 access_token = token,
                 refresh_token = refreshToken,
-                expires_in = tokenExpiresIn
+                expires_in = tokenExpiresIn,
+                userid = userid
             };
 
             // 将access_token,refresh_token加入缓存
@@ -156,7 +211,7 @@ namespace Hz.IdentityServer.Controllers
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(tokenExpiresIn)
             });
 
-            _cache.SetString(CacheKeyProvider.RefreshTokenKey(refreshToken), userid, new DistributedCacheEntryOptions {
+            _cache.SetString(CacheKeyProvider.RefreshTokenKey(refreshToken), System.Text.Json.JsonSerializer.Serialize(tokenResult), new DistributedCacheEntryOptions {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(refreshTokenExpiresIn)
             });
 
