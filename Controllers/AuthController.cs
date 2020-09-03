@@ -217,5 +217,33 @@ namespace Hz.IdentityServer.Controllers
 
             return tokenResult;
         }
+        
+        /// <summary>
+        /// 获取jwttoken
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public IActionResult JwtToken([FromBody]JwtOptions options)
+        {
+            // validate parameter
+            if(string.IsNullOrWhiteSpace(options?.account) || string.IsNullOrWhiteSpace(options?.password))
+            {
+                return Json(new { error = "account or password is null or empty"});
+            }
+
+            // validate user
+            var user = UserInfo.CreateAdminUser();
+            var checkResult = user.CheckUser(options.account, options.password);
+
+            if (!checkResult)
+            {
+                return Json(new { error = "account or password error"});
+            }
+
+            // generate jwt token
+            var token = _keyFactory.GenerateJwtToken(user.id.ToString(), user.username);
+            return Json(token);
+        }
     }
 }

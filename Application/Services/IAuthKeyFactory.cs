@@ -4,5 +4,6 @@ namespace Hz.IdentityServer.Application.Services
     {
          string GenerateCode();
          string GenerateToken();
+         string GenerateJwtToken(string id, string username);
     }
 }

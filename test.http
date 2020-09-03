@@ -156,3 +156,15 @@ Content-Type: application/json
   "refresh_token": "4d3f3061e8e049689a586d8dfcba0d08"
 }
 ### ------------------------------------------------------------
+
+### --------------------------jwttoken--------------------------
+
+POST http://localhost:5000/auth/jwttoken HTTP/1.1
+Content-Type: application/json
+
+{
+  "account": "admin",
+  "password": "123456"
+}
+
+### ------------------------------------------------------------
