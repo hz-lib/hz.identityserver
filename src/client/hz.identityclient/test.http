@@ -1,0 +1,17 @@
+### 获取jwttoken
+POST http://localhost:5000/auth/jwttoken HTTP/1.1
+Content-Type: application/json
+
+{
+    "account": "admin",
+    "password": "123456"
+}
+
+### 请求接口
+GET  http://localhost:5001/WeatherForecast/get2 HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjYzNzM0OTMyNjgxOTg1OTQyMCIsInVzZXJuYW1lIjoiYWRtaW4ifQ.UAOVL3c-EhYnkxHJtjIQDH0Er8o9E-656Qhd3fG5rDE
+
+### 无token
+GET  http://localhost:5001/WeatherForecast/get2 HTTP/1.1
+Content-Type: application/json
